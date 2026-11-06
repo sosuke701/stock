@@ -26,6 +26,7 @@
    - 盤後與晚間：指數收盤以 Yahoo `https://tw.stock.yahoo.com/quote/%5ETWII`、`%5ETWOII` 頁面的收盤數字為準（MIS 指數可能停在 13:2x）。
 3. **觀察清單**（盤後、晚間才做；盤前沿用前一天）：瀏覽器開 `https://www.twse.com.tw/zh/index.html`，把 `tools/browser_watchlist.js` 的 `__CODES__` 換成 watchlist 陣列後執行，每 30 秒查一次進度，完成後存 `/tmp/wl.json` → 用 `show data/notes.json.enc` 取出舊備註，改寫成每檔一句觀察（引用指標數字）存 `/tmp/notes.json` → `notes-set /tmp/notes.json` → `watchlist /tmp/wl.json`
 4. **蒐集資訊並寫報告** `/tmp/report.md`：
+   - 三份報告都可以引用網站上的「技術面篩選」結果（`show data/watchlist.json.enc` 的 screen 欄位），但要寫成「符合技術條件、觀察價位」，**不可**寫成「建議買進」。
    - **盤前（premarket）**：隔夜美股四大指數、費半、台積電 ADR（Yahoo `quote/TSM`、`quote/%5ESOX`）與換算溢價、台指期夜盤、匯率、今日重要事件與財經行事曆、觀察族群、今日盤勢劇本（偏多／震盪／偏空的條件與點位）、今日風險。
    - **盤後（close）**：加權與櫃買收盤、成交值、權值股表現、強弱族群、漲跌家數、盤勢解讀、明日觀察點。（法人買賣超 15:00 後才公布，盤後版可先寫「待晚間更新」）
    - **晚間（evening）**：三大法人與外資期貨淨部位、融資券變化、盤後重大新聞與公告、今晚美股開盤狀況、明日／下週觀察重點與劇本。

@@ -75,6 +75,22 @@
   <article class="card"><div id="reportMeta" class="small muted"></div><div id="report" class="md">讀取中…</div></article>
 
   <section class="card">
+    <h2>技術面篩選</h2>
+    <p class="small muted" id="scUpdated" style="margin:0 0 8px"></p>
+    <div class="scroll"><table class="wl" id="sc"></table></div>
+    <details class="small muted" style="margin-top:8px"><summary>篩選條件說明</summary>
+      <ul style="margin:6px 0;padding-left:18px">
+        <li><b>站回 5 日線／月線</b>：前一天收在均線下，今天收在均線上</li>
+        <li><b>RSI 超賣區回升</b>：近 5 天 RSI 曾低於 30，今天比前一天回升 2 以上</li>
+        <li><b>KD 低檔黃金交叉</b>：K 值由下往上穿過 D 值，且 K 低於 40</li>
+        <li><b>帶量紅K</b>：收紅且成交量 ≥ 20 日均量 1.5 倍</li>
+        <li><b>轉強確認價</b>：收盤站上這個價位才算轉強；<b>失效價</b>：跌破近 3 日低點，訊號視為失效</li>
+      </ul>
+      依前一交易日收盤資料由程式自動篩選，只是技術面訊號，<b>不是買進建議</b>；單一訊號在空頭趨勢中常常失敗，請搭配大盤與自身風險判斷。
+    </details>
+  </section>
+
+  <section class="card">
     <h2>觀察清單</h2>
     <p class="small muted" id="wlUpdated" style="margin:0 0 8px"></p>
     <div class="scroll"><table class="wl" id="wl"></table></div>
@@ -148,6 +164,16 @@ function renderArchive() {
   $("archive").innerHTML = `<ul style="padding-left:18px;margin:0">${dates.map((d) => `<li>${d}　${["premarket", "close", "evening"].filter((s) => byDate[d].some((r) => r.slot === s)).map((s) => `<a data-date="${d}" data-slot="${s}">${SLOT[s]}</a>`).join("　")}</li>`).join("")}</ul>`;
 }
 
+function renderScreen(w) {
+  const list = w?.screen ?? [];
+  $("scUpdated").textContent = w ? `資料日期：${w.asOf ?? ""}　觀察清單中符合條件 ${list.length} 檔` : "";
+  if (!list.length) { $("sc").innerHTML = `<tr><td class="muted" style="text-align:left">今天觀察清單中沒有股票符合條件。</td></tr>`; return; }
+  $("sc").innerHTML = `<tr><th>股票</th><th>收盤</th><th>漲跌</th><th class="l">符合條件</th><th>轉強確認價</th><th>失效價</th></tr>` +
+    list.map((x) => `<tr><td>${esc(x.code)} ${esc(x.name)}</td><td>${fmt(x.close)}</td><td class="${cls(x.changePct)}">${pct(x.changePct)}</td>
+    <td class="l" style="white-space:normal;min-width:160px">${x.signals.map((s) => `<span class="tag">${esc(s)}</span>`).join(" ")}</td>
+    <td>${fmt(x.confirm)}<div class="small muted">${esc(x.confirmLabel)}</div></td><td>${fmt(x.invalid)}<div class="small muted">近 3 日低點</div></td></tr>`).join("");
+}
+
 function renderWatchlist(w) {
   if (!w?.items?.length) { $("wl").innerHTML = `<tr><td class="muted">尚無資料</td></tr>`; return; }
   $("wlUpdated").textContent = `資料日期：${w.asOf ?? ""}`;
@@ -167,7 +193,7 @@ async function main() {
   currentDate = latest?.date;
   if (latest) await showReport(latest.date, latest.slot);
   renderArchive();
-  try { renderWatchlist(await getJSON("data/watchlist.json.enc")); } catch { renderWatchlist(null); }
+  try { const w = await getJSON("data/watchlist.json.enc"); renderScreen(w); renderWatchlist(w); } catch { renderScreen(null); renderWatchlist(null); }
 }
 
 $("tabs").onclick = (e) => { const b = e.target.closest("button[data-slot]"); if (b && !b.disabled) showReport(currentDate, b.dataset.slot); };

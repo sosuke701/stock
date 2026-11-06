@@ -23,14 +23,15 @@ window.__wl = { done: false, n: 0, result: {}, err: null };
     return l === 0 ? 100 : 100 - 100 / (1 + g / l);
   }
   function kd(b, n = 9) {
-    let k = 50, d = 50;
+    let k = 50, d = 50, pk = null, pd = null;
     for (let i = n - 1; i < b.length; i++) {
       let hi = -Infinity, lo = Infinity;
       for (let j = i - n + 1; j <= i; j++) { hi = Math.max(hi, b[j].h); lo = Math.min(lo, b[j].l); }
       const rsv = hi === lo ? 50 : ((b[i].c - lo) / (hi - lo)) * 100;
+      pk = k; pd = d;
       k = (2 / 3) * k + rsv / 3; d = (2 / 3) * d + k / 3;
     }
-    return { k, d };
+    return { k, d, pk, pd };
   }
   function swings(b, k = 3, look = 120) {
     const s = Math.max(0, b.length - look), H = [], L = [];
@@ -50,7 +51,7 @@ window.__wl = { done: false, n: 0, result: {}, err: null };
         window.__wl.n++;
         await new Promise((r) => setTimeout(r, 1300));
       }
-      const b = rows.map((r) => ({ d: r[0], o: num(r[3]), h: num(r[4]), l: num(r[5]), c: num(r[6]) })).filter((x) => x.o !== null && x.c !== null);
+      const b = rows.map((r) => ({ d: r[0], v: num(r[1]), o: num(r[3]), h: num(r[4]), l: num(r[5]), c: num(r[6]) })).filter((x) => x.o !== null && x.c !== null);
       if (b.length < 30) { window.__wl.result[code] = { error: "資料不足" }; continue; }
       const c = b.map((x) => x.c), close = c.at(-1), prev = c.at(-2);
       const sw = swings(b), K = kd(b);
@@ -63,6 +64,13 @@ window.__wl = { done: false, n: 0, result: {}, err: null };
         resistance: Math.min(...sw.H.filter((p) => p > close), Infinity),
         low20: Math.min(...last20.map((x) => x.l)), high60: Math.max(...last60.map((x) => x.h)),
         chg20: r2((close / c.at(-21) - 1) * 100), bars: b.length,
+        // 篩選用：前一日數值
+        open: b.at(-1).o, low: b.at(-1).l, prevClose: prev,
+        ma5Prev: r2(sma(c.slice(0, -1), 5)), ma20Prev: r2(sma(c.slice(0, -1), 20)),
+        rsiPrev: r2(rsi(c.slice(0, -1))), rsiMin5: r2(Math.min(...[1, 2, 3, 4, 5].map((i) => rsi(c.slice(0, c.length - i + 1)) ?? 100))),
+        kPrev: r2(K.pk), dPrev: r2(K.pd),
+        vol: b.at(-1).v, vol20: r2(sma(b.map((x) => x.v ?? 0), 20)),
+        low3: Math.min(...b.slice(-3).map((x) => x.l)),
       };
     }
   } catch (e) { window.__wl.err = String(e); }

@@ -88,8 +88,28 @@ else if (cmd === "watchlist") {
       chg20: s.chg20, trend, note: notes[code] ?? "",
     });
   }
-  writeEnc("data/watchlist.json.enc", { asOf, generated: taipeiNow(), items });
-  console.log(`觀察清單 ${items.length} 檔，資料日期 ${asOf}`);
+  // ---- 技術面篩選（純規則，由程式判斷）----
+  const screen = [];
+  for (const code of cfg.watchlist) {
+    const s = sums[code];
+    if (!s || s.error || s.prevClose === undefined) continue;
+    const sig = [];
+    if (s.ma5 && s.ma5Prev && s.close > s.ma5 && s.prevClose <= s.ma5Prev) sig.push("站回 5 日線");
+    if (s.ma20 && s.ma20Prev && s.close > s.ma20 && s.prevClose <= s.ma20Prev) sig.push("站回月線");
+    if (s.rsiMin5 !== null && s.rsiMin5 < 30 && s.rsiPrev !== null && s.rsi - s.rsiPrev >= 2) sig.push("RSI 超賣區回升");
+    if (s.kPrev !== null && s.dPrev !== null && s.kPrev <= s.dPrev && s.k > s.d && s.k < 40) sig.push("KD 低檔黃金交叉");
+    if (s.vol && s.vol20 && s.close > s.open && s.changePct > 0 && s.vol >= 1.5 * s.vol20) sig.push("帶量紅K");
+    if (!sig.length) continue;
+    const confirm = s.close < s.ma5 ? s.ma5 : s.close < s.ma20 ? s.ma20 : (s.resistance ?? s.high60);
+    const confirmLabel = s.close < s.ma5 ? "5 日線" : s.close < s.ma20 ? "月線" : "前波高點";
+    screen.push({
+      code, name: items.find((i) => i.code === code)?.name ?? code, close: s.close, changePct: s.changePct,
+      signals: sig, confirm, confirmLabel, invalid: s.low3,
+    });
+  }
+  screen.sort((a, b) => b.signals.length - a.signals.length);
+  writeEnc("data/watchlist.json.enc", { asOf, generated: taipeiNow(), items, screen });
+  console.log(`觀察清單 ${items.length} 檔，資料日期 ${asOf}；篩選符合 ${screen.length} 檔：${screen.map((x) => x.code + "(" + x.signals.join("/") + ")").join("、") || "無"}`);
 }
 
 else if (cmd === "publish") {
