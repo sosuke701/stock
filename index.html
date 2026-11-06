@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>每日台股觀察</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--ink:#1a1d21;--muted:#6b7280;--line:#e6e8eb;--accent:#2f5bd3;--up:#d93b3b;--down:#139157;--radius:14px}
+  @media (prefers-color-scheme:dark){:root{--bg:#0e1013;--card:#171a1f;--ink:#e7e9ec;--muted:#9aa1ab;--line:#262b33;--accent:#7393f2;--up:#ff6b6b;--down:#3fcf8e}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:16px 16px 48px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 16px}
+  header h1{font-size:22px;margin:0;letter-spacing:.5px}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .snap{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
+  .tile .k{font-size:12px;color:var(--muted)}
+  .tile .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3}
+  .tile .c{font-size:13px;font-variant-numeric:tabular-nums}
+  .tabs{display:flex;gap:6px;margin:0 0 12px;overflow-x:auto}
+  .tabs button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--muted);padding:6px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tabs button:disabled{opacity:.4;cursor:default}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
+  .card h2{font-size:17px;margin:0 0 4px}
+  .md h1,.md h2,.md h3{font-size:17px;margin:20px 0 6px}
+  .md h1:first-child,.md h2:first-child,.md h3:first-child{margin-top:4px}
+  .md ul,.md ol{padding-left:22px}
+  .md table{border-collapse:collapse;width:100%;font-size:14px;display:block;overflow-x:auto}
+  .md th,.md td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}
+  .md blockquote{margin:8px 0;padding:4px 12px;border-left:3px solid var(--accent);color:var(--muted)}
+  table.wl{border-collapse:collapse;width:100%;font-size:14px}
+  .scroll{overflow-x:auto}
+  table.wl th,table.wl td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  table.wl th{font-size:12px;color:var(--muted);font-weight:500}
+  table.wl td:first-child,table.wl th:first-child,table.wl td.l,table.wl th.l{text-align:left}
+  .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line)}
+  .archive a{color:var(--accent);text-decoration:none;cursor:pointer}
+  .archive li{margin:4px 0}
+  .gate{max-width:360px;margin:14vh auto;text-align:center}
+  .gate input{font:inherit;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);margin:12px 0 8px}
+  .gate button,.linkbtn{font:inherit;border:0;background:var(--accent);color:#fff;padding:10px 18px;border-radius:10px;cursor:pointer;width:100%}
+  .linkbtn{background:none;color:var(--muted);width:auto;padding:0;font-size:12px;text-decoration:underline}
+  .hidden{display:none!important}
+  footer{font-size:12px;color:var(--muted);text-align:center;margin-top:24px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <h1 style="font-size:22px">📈 每日台股觀察</h1>
+  <p class="muted small">請輸入密碼</p>
+  <form id="gateForm">
+    <input type="password" id="pw" autocomplete="current-password" placeholder="密碼">
+    <label class="small muted" style="display:block;text-align:left;margin-bottom:12px"><input type="checkbox" id="remember" checked style="width:auto;margin:0 6px 0 0">在這台裝置記住我</label>
+    <button type="submit" id="gateBtn">進入</button>
+  </form>
+  <p class="small" id="gateMsg" style="color:var(--up)"></p>
+</div>
+<div class="wrap hidden" id="main">
+  <header>
+    <h1>📈 每日台股觀察</h1>
+    <span class="small muted" id="updated">讀取中…</span>
+  </header>
+
+  <section class="snap" id="snap"></section>
+
+  <nav class="tabs" id="tabs">
+    <button data-slot="premarket">盤前 08:30</button>
+    <button data-slot="close">盤後 14:00</button>
+    <button data-slot="evening">晚間 21:00</button>
+  </nav>
+  <article class="card"><div id="reportMeta" class="small muted"></div><div id="report" class="md">讀取中…</div></article>
+
+  <section class="card">
+    <h2>觀察清單</h2>
+    <p class="small muted" id="wlUpdated" style="margin:0 0 8px"></p>
+    <div class="scroll"><table class="wl" id="wl"></table></div>
+    <p class="small muted" style="margin:8px 0 0">技術指標由程式依證交所／櫃買中心日K計算；支撐壓力為近期轉折高低點。</p>
+  </section>
+
+  <section class="card archive">
+    <h2>歷史報告</h2>
+    <div id="archive" class="small"></div>
+  </section>
+
+  <footer>
+    內容為 AI 整理的市場觀察，資料可能有延遲或錯誤，<b>不構成任何投資建議</b>；投資盈虧請自行負責。<br>
+    資料來源：臺灣證券交易所、證券櫃檯買賣中心、Yahoo 股市及各新聞來源。<br>
+    <button class="linkbtn" id="logout">登出這台裝置</button>
+  </footer>
+</div>
+
+<script type="module">
+import { marked } from "https://cdn.jsdelivr.net/npm/marked@12/lib/marked.esm.js";
+import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.es.mjs";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (v, d = 2) => (v === null || v === undefined || !Number.isFinite(+v) ? "—" : (+v).toLocaleString("zh-TW", { minimumFractionDigits: d, maximumFractionDigits: d }));
+const pct = (v) => (v === null || v === undefined || !Number.isFinite(+v) ? "—" : `${v > 0 ? "+" : ""}${(+v).toFixed(2)}%`);
+const cls = (v) => (v > 0 ? "up" : v < 0 ? "down" : "");
+const SLOT = { premarket: "盤前", close: "盤後", evening: "晚間" };
+const bust = () => `?t=${Math.floor(Date.now() / 60000)}`; // 每分鐘換一次，避免看到舊快取
+
+let index = null, currentDate = null;
+
+// ---- 解密（AES-256-GCM，金鑰由密碼經 PBKDF2 產生）----
+let KEY = null;
+const b64 = (s) => Uint8Array.from(atob(s.trim()), (c) => c.charCodeAt(0));
+const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+async function deriveKey(pw) {
+  const { salt, iter } = await (await fetch("data/salt.json" + bust())).json();
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(salt), iterations: iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, true, ["decrypt"]);
+}
+async function decrypt(text) {
+  const buf = b64(text);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, KEY, buf.slice(12));
+  return new TextDecoder().decode(pt);
+}
+async function getText(p) { const r = await fetch(p + bust()); if (!r.ok) throw new Error(p); return decrypt(await r.text()); }
+async function getJSON(p) { return JSON.parse(await getText(p)); }
+
+function renderSnap(s) {
+  if (!s?.items?.length) { $("snap").innerHTML = ""; return; }
+  $("snap").innerHTML = s.items.map((x) => `<div class="tile"><div class="k">${esc(x.name)}</div><div class="v">${fmt(x.value, x.decimals ?? 2)}</div><div class="c ${cls(x.changePct)}">${x.change !== undefined && x.change !== null ? (x.change > 0 ? "+" : "") + fmt(x.change, x.decimals ?? 2) + "　" : ""}${pct(x.changePct)}</div></div>`).join("");
+}
+
+async function showReport(date, slot) {
+  const rep = index.reports.find((r) => r.date === date && r.slot === slot);
+  document.querySelectorAll("#tabs button").forEach((b) => {
+    const has = index.reports.some((r) => r.date === date && r.slot === b.dataset.slot);
+    b.disabled = !has; b.classList.toggle("on", b.dataset.slot === slot && has);
+  });
+  if (!rep) { $("report").innerHTML = `<p class="muted">這個時段還沒有報告。</p>`; $("reportMeta").textContent = ""; return; }
+  $("reportMeta").textContent = `${rep.date}　${SLOT[rep.slot]}報告　更新於 ${rep.generated ?? ""}`;
+  try { $("report").innerHTML = DOMPurify.sanitize(marked.parse(await getText(rep.file))); }
+  catch { $("report").innerHTML = `<p class="muted">報告讀取失敗。</p>`; }
+}
+
+function renderArchive() {
+  const byDate = {};
+  for (const r of index.reports) (byDate[r.date] ??= []).push(r);
+  const dates = Object.keys(byDate).sort().reverse().slice(0, 60);
+  $("archive").innerHTML = `<ul style="padding-left:18px;margin:0">${dates.map((d) => `<li>${d}　${["premarket", "close", "evening"].filter((s) => byDate[d].some((r) => r.slot === s)).map((s) => `<a data-date="${d}" data-slot="${s}">${SLOT[s]}</a>`).join("　")}</li>`).join("")}</ul>`;
+}
+
+function renderWatchlist(w) {
+  if (!w?.items?.length) { $("wl").innerHTML = `<tr><td class="muted">尚無資料</td></tr>`; return; }
+  $("wlUpdated").textContent = `資料日期：${w.asOf ?? ""}`;
+  $("wl").innerHTML = `<tr><th>股票</th><th>收盤</th><th>漲跌</th><th>MA20</th><th>MA60</th><th>RSI</th><th>K / D</th><th>支撐</th><th>壓力</th><th class="l">趨勢</th><th class="l">觀察重點</th></tr>` +
+    w.items.map((x) => `<tr><td>${esc(x.code)} ${esc(x.name)}</td><td>${fmt(x.close)}</td><td class="${cls(x.changePct)}">${pct(x.changePct)}</td>
+    <td>${fmt(x.ma20)}</td><td>${fmt(x.ma60)}</td><td>${fmt(x.rsi, 1)}</td><td>${fmt(x.k, 0)} / ${fmt(x.d, 0)}</td>
+    <td>${fmt(x.support)}</td><td>${fmt(x.resistance)}</td><td class="l"><span class="tag">${esc(x.trend ?? "")}</span></td>
+    <td class="l" style="white-space:normal;min-width:180px">${esc(x.note ?? "")}</td></tr>`).join("");
+}
+
+async function main() {
+  try { index = await getJSON("data/index.json.enc"); }
+  catch { $("report").textContent = "尚無資料。"; $("updated").textContent = ""; return; }
+  $("updated").textContent = `最後更新：${index.updated ?? ""}`;
+  renderSnap(index.snapshot);
+  const latest = index.reports[0];
+  currentDate = latest?.date;
+  if (latest) await showReport(latest.date, latest.slot);
+  renderArchive();
+  try { renderWatchlist(await getJSON("data/watchlist.json.enc")); } catch { renderWatchlist(null); }
+}
+
+$("tabs").onclick = (e) => { const b = e.target.closest("button[data-slot]"); if (b && !b.disabled) showReport(currentDate, b.dataset.slot); };
+$("archive").onclick = (e) => {
+  const a = e.target.closest("a[data-date]"); if (!a) return;
+  currentDate = a.dataset.date; showReport(a.dataset.date, a.dataset.slot);
+  window.scrollTo({ top: $("tabs").offsetTop - 10, behavior: "smooth" });
+};
+async function unlock(key) {
+  KEY = key;
+  await getJSON("data/index.json.enc"); // 解得開才算密碼正確
+  $("gate").classList.add("hidden"); $("main").classList.remove("hidden");
+  main();
+}
+$("gateForm").onsubmit = async (e) => {
+  e.preventDefault();
+  $("gateBtn").disabled = true; $("gateMsg").textContent = "";
+  try {
+    const key = await deriveKey($("pw").value);
+    await unlock(key);
+    if ($("remember").checked) { try { localStorage.setItem("stockKey", toB64(await crypto.subtle.exportKey("raw", key))); } catch {} }
+  } catch { KEY = null; $("gateMsg").textContent = "密碼錯誤"; }
+  $("gateBtn").disabled = false;
+};
+$("logout").onclick = () => { try { localStorage.removeItem("stockKey"); } catch {} location.reload(); };
+(async () => {
+  let saved = null; try { saved = localStorage.getItem("stockKey"); } catch {}
+  if (!saved) return $("pw").focus();
+  try { await unlock(await crypto.subtle.importKey("raw", b64(saved), "AES-GCM", false, ["decrypt"])); }
+  catch { try { localStorage.removeItem("stockKey"); } catch {} }
+})();
+</script>
+</body>
+</html>
