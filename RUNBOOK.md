@@ -4,6 +4,9 @@
 
 ## 共通規則
 
+- **推送權限**：只有「盤前、盤後、晚間報告」的例行更新（data/ 下的加密資料與報告）可以直接 commit、push，不用詢問。
+  其他任何變更（index.html、tools/、RUNBOOK.md、data/config.json、改觀察清單、改密碼等）都**不可**自行推送，要先問使用者。
+
 - **網站內容全部加密**。網站密碼由排程指令提供，執行 `tools/update.mjs` 時一律加上環境變數，例如 `SITE_PASSWORD=<密碼> node tools/update.mjs ...`。
   **絕對不要**把密碼寫進 repo 的任何檔案、commit 訊息或報告；也不要 commit 任何明文報告（明文只放在 /tmp）。
 - 讀舊資料用 `node tools/update.mjs show data/notes.json.enc`（或 index.json.enc、reports/xxx.md.enc）。
