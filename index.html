@@ -131,7 +131,7 @@ const cls = (v) => (v > 0 ? "up" : v < 0 ? "down" : "");
 const SLOT = { premarket: "盤前", close: "盤後", evening: "晚間" };
 const bust = () => `?t=${Math.floor(Date.now() / 60000)}`; // 每分鐘換一次，避免看到舊快取
 
-let index = null, currentDate = null;
+let index = null, currentDate = null, latestWl = null;
 
 // ---- 解密（AES-256-GCM，金鑰由密碼經 PBKDF2 產生）----
 let KEY = null;
@@ -155,6 +155,20 @@ function renderSnap(s) {
   $("snap").innerHTML = s.items.map((x) => `<div class="tile"><div class="k">${esc(x.name)}</div><div class="v">${fmt(x.value, x.decimals ?? 2)}</div><div class="c ${cls(x.changePct)}">${x.change !== undefined && x.change !== null ? (x.change > 0 ? "+" : "") + fmt(x.change, x.decimals ?? 2) + "　" : ""}${pct(x.changePct)}</div></div>`).join("");
 }
 
+async function renderDayData(date, rep) {
+  const ds = reportDates(), latest = ds[ds.length - 1];
+  renderSnap(rep?.snapshot ?? (date === latest ? index.snapshot : null));
+  if (!rep && date !== latest) $("snap").innerHTML = "";
+  let w = null;
+  if (date === latest) w = latestWl;
+  else { try { w = await getJSON(`data/history/watchlist-${date}.json.enc`); } catch {} }
+  if (date !== currentDate) return;
+  if (w) { renderScreen(w); renderWatchlist(w); }
+  else {
+    const msg = `<tr><td class="muted" style="text-align:left">這天沒有保存觀察清單（盤前沿用前一交易日，或是開始保存前的日子）。</td></tr>`;
+    $("sc").innerHTML = msg; $("wl").innerHTML = msg; $("scUpdated").textContent = ""; $("wlUpdated").textContent = "";
+  }
+}
 function reportDates() { return [...new Set(index.reports.map((r) => r.date))].sort(); }
 function syncDateBar(date) {
   const ds = reportDates(); if (!ds.length) return;
@@ -175,6 +189,7 @@ function goDate(date) {
     document.querySelectorAll("#tabs button").forEach((b) => { b.disabled = true; b.classList.remove("on"); });
     $("reportMeta").textContent = date;
     $("report").innerHTML = `<p class="muted">這天沒有報告（休市或尚未發布）。可用「前一天／後一天」跳到有報告的日子。</p>`;
+    renderDayData(date, null);
     return;
   }
   showReport(date, pickSlot(date, cur));
@@ -188,6 +203,7 @@ async function showReport(date, slot) {
     b.disabled = !has; b.classList.toggle("on", b.dataset.slot === slot && has);
   });
   if (!rep) { $("report").innerHTML = `<p class="muted">這個時段還沒有報告。</p>`; $("reportMeta").textContent = ""; return; }
+  currentDate = date; renderDayData(date, rep);
   $("reportMeta").textContent = `${rep.date}　${SLOT[rep.slot]}報告　更新於 ${rep.generated ?? ""}`;
   try { $("report").innerHTML = DOMPurify.sanitize(marked.parse(await getText(rep.file))); }
   catch { $("report").innerHTML = `<p class="muted">報告讀取失敗。</p>`; }
@@ -225,11 +241,11 @@ async function main() {
   catch { $("report").textContent = "尚無資料。"; $("updated").textContent = ""; return; }
   $("updated").textContent = `最後更新：${index.updated ?? ""}`;
   renderSnap(index.snapshot);
+  try { latestWl = await getJSON("data/watchlist.json.enc"); } catch {}
   const latest = index.reports[0];
   currentDate = latest?.date;
-  if (latest) await showReport(latest.date, latest.slot);
+  if (latest) await showReport(latest.date, latest.slot); else { renderScreen(latestWl); renderWatchlist(latestWl); }
   renderArchive();
-  try { const w = await getJSON("data/watchlist.json.enc"); renderScreen(w); renderWatchlist(w); } catch { renderScreen(null); renderWatchlist(null); }
 }
 
 $("tabs").onclick = (e) => { const b = e.target.closest("button[data-slot]"); if (b && !b.disabled) showReport(currentDate, b.dataset.slot); };

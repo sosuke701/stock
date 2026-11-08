@@ -108,7 +108,9 @@ else if (cmd === "watchlist") {
     });
   }
   screen.sort((a, b) => b.signals.length - a.signals.length);
-  writeEnc("data/watchlist.json.enc", { asOf, generated: taipeiNow(), items, screen });
+  const wl = { asOf, generated: taipeiNow(), items, screen };
+  writeEnc("data/watchlist.json.enc", wl);
+  if (asOf) writeEnc(`data/history/watchlist-${asOf}.json.enc`, wl); // 每天另存一份，網站可回看
   console.log(`觀察清單 ${items.length} 檔，資料日期 ${asOf}；篩選符合 ${screen.length} 檔：${screen.map((x) => x.code + "(" + x.signals.join("/") + ")").join("、") || "無"}`);
 }
 
@@ -131,6 +133,8 @@ else if (cmd === "publish") {
     }).filter(Boolean),
   };
   idx.updated = taipeiNow();
+  const ent = idx.reports.find((r) => r.date === date && r.slot === slot);
+  if (ent) ent.snapshot = idx.snapshot; // 每份報告記下當時的指數方塊，網站可回看
   writeEnc("data/index.json.enc", idx);
   console.log(`已發布 ${rel}`);
 }
@@ -144,6 +148,14 @@ else if (cmd === "notes-set") {
   // 用明文 JSON 檔覆蓋觀察備註：node tools/update.mjs notes-set /tmp/notes.json
   writeEnc("data/notes.json.enc", JSON.parse(fs.readFileSync(args[0], "utf8")));
   console.log("已更新觀察備註");
+}
+
+else if (cmd === "history-init") {
+  // 一次性：把現有的觀察清單與指數方塊存成歷史
+  const w = readEncJSON("data/watchlist.json.enc");
+  if (w?.asOf) { writeEnc(`data/history/watchlist-${w.asOf}.json.enc`, w); console.log("已存觀察清單", w.asOf); }
+  const idx = readEncJSON("data/index.json.enc");
+  if (idx?.reports?.length && idx.snapshot && !idx.reports[0].snapshot) { idx.reports[0].snapshot = idx.snapshot; writeEnc("data/index.json.enc", idx); console.log("已存指數方塊", idx.reports[0].date); }
 }
 
 else if (cmd === "migrate") {
