@@ -24,6 +24,10 @@
   .tabs button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--muted);padding:6px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
   .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .tabs button:disabled{opacity:.4;cursor:default}
+  .datebar{display:flex;gap:6px;align-items:center;margin:0 0 10px;flex-wrap:wrap}
+  .datebar input{font:inherit;font-size:14px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:inherit;width:auto;margin:0}
+  .datebar button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--muted);padding:5px 12px;border-radius:999px;cursor:pointer;width:auto;margin:0}
+  .datebar button:disabled{opacity:.4;cursor:default}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
   .card h2{font-size:17px;margin:0 0 4px}
   .md h1,.md h2,.md h3{font-size:17px;margin:20px 0 6px}
@@ -67,6 +71,12 @@
 
   <section class="snap" id="snap"></section>
 
+  <div class="datebar">
+    <button id="prevDay" title="前一個有報告的日子">‹ 前一天</button>
+    <input type="date" id="datePick" aria-label="選擇日期">
+    <button id="nextDay" title="後一個有報告的日子">後一天 ›</button>
+    <button id="latestDay">最新</button>
+  </div>
   <nav class="tabs" id="tabs">
     <button data-slot="premarket">盤前 08:30</button>
     <button data-slot="close">盤後 14:00</button>
@@ -145,7 +155,33 @@ function renderSnap(s) {
   $("snap").innerHTML = s.items.map((x) => `<div class="tile"><div class="k">${esc(x.name)}</div><div class="v">${fmt(x.value, x.decimals ?? 2)}</div><div class="c ${cls(x.changePct)}">${x.change !== undefined && x.change !== null ? (x.change > 0 ? "+" : "") + fmt(x.change, x.decimals ?? 2) + "　" : ""}${pct(x.changePct)}</div></div>`).join("");
 }
 
+function reportDates() { return [...new Set(index.reports.map((r) => r.date))].sort(); }
+function syncDateBar(date) {
+  const ds = reportDates(); if (!ds.length) return;
+  const dp = $("datePick"); dp.min = ds[0]; dp.max = ds[ds.length - 1]; dp.value = date ?? "";
+  $("prevDay").disabled = !ds.some((d) => d < date);
+  $("nextDay").disabled = !ds.some((d) => d > date);
+  $("latestDay").disabled = date === ds[ds.length - 1];
+}
+function pickSlot(date, prefer) {
+  const slots = index.reports.filter((r) => r.date === date).map((r) => r.slot);
+  if (prefer && slots.includes(prefer)) return prefer;
+  return ["evening", "close", "premarket"].find((s) => slots.includes(s)) ?? prefer ?? "premarket";
+}
+function goDate(date) {
+  currentDate = date; syncDateBar(date);
+  const cur = document.querySelector("#tabs button.on")?.dataset.slot;
+  if (!index.reports.some((r) => r.date === date)) {
+    document.querySelectorAll("#tabs button").forEach((b) => { b.disabled = true; b.classList.remove("on"); });
+    $("reportMeta").textContent = date;
+    $("report").innerHTML = `<p class="muted">這天沒有報告（休市或尚未發布）。可用「前一天／後一天」跳到有報告的日子。</p>`;
+    return;
+  }
+  showReport(date, pickSlot(date, cur));
+}
+
 async function showReport(date, slot) {
+  syncDateBar(date);
   const rep = index.reports.find((r) => r.date === date && r.slot === slot);
   document.querySelectorAll("#tabs button").forEach((b) => {
     const has = index.reports.some((r) => r.date === date && r.slot === b.dataset.slot);
@@ -160,7 +196,7 @@ async function showReport(date, slot) {
 function renderArchive() {
   const byDate = {};
   for (const r of index.reports) (byDate[r.date] ??= []).push(r);
-  const dates = Object.keys(byDate).sort().reverse().slice(0, 60);
+  const dates = Object.keys(byDate).sort().reverse();
   $("archive").innerHTML = `<ul style="padding-left:18px;margin:0">${dates.map((d) => `<li>${d}　${["premarket", "close", "evening"].filter((s) => byDate[d].some((r) => r.slot === s)).map((s) => `<a data-date="${d}" data-slot="${s}">${SLOT[s]}</a>`).join("　")}</li>`).join("")}</ul>`;
 }
 
@@ -197,6 +233,10 @@ async function main() {
 }
 
 $("tabs").onclick = (e) => { const b = e.target.closest("button[data-slot]"); if (b && !b.disabled) showReport(currentDate, b.dataset.slot); };
+$("datePick").onchange = (e) => { if (e.target.value) goDate(e.target.value); };
+$("prevDay").onclick = () => { const p = reportDates().filter((d) => d < currentDate).pop(); if (p) goDate(p); };
+$("nextDay").onclick = () => { const n = reportDates().find((d) => d > currentDate); if (n) goDate(n); };
+$("latestDay").onclick = () => { const ds = reportDates(); if (ds.length) goDate(ds[ds.length - 1]); };
 $("archive").onclick = (e) => {
   const a = e.target.closest("a[data-date]"); if (!a) return;
   currentDate = a.dataset.date; showReport(a.dataset.date, a.dataset.slot);
